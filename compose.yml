@@ -1,0 +1,144 @@
+x-service: &service
+  restart: unless-stopped
+  depends_on:
+    postgres: {condition: service_healthy}
+    rabbitmq: {condition: service_healthy}
+    redis: {condition: service_healthy}
+  healthcheck:
+    test: ["CMD-SHELL", "curl -fsS http://localhost:8080/actuator/health/readiness || exit 1"]
+    interval: 10s
+    timeout: 5s
+    retries: 20
+    start_period: 25s
+x-environment: &environment
+  DB_HOST: postgres
+  RABBITMQ_HOST: rabbitmq
+  RABBITMQ_USER: ${RABBITMQ_DEFAULT_USER:-diamond}
+  RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:-diamond-local-broker}
+  JWT_SECRET: ${JWT_SECRET:-local-only-change-this-32-character-secret}
+  INTERNAL_SECRET: ${INTERNAL_SECRET:-local-only-service-authentication}
+  REDIS_HOST: redis
+  MAIL_HOST: mailpit
+  ZIPKIN_URL: http://zipkin:9411/api/v2/spans
+  USERS_URL: http://users:8080
+  SECURE_COOKIES: ${SECURE_COOKIES:-false}
+  APP_ORIGIN: ${APP_ORIGIN:-http://localhost:8080}
+  SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+  AUCTION_CURRENCY: ${AUCTION_CURRENCY:-USD}
+services:
+  postgres:
+    image: postgres:17.6-alpine
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-diamond-local-db}
+      users_PASSWORD: ${USERS_DB_PASSWORD:-diamond-users-local}
+      auctions_PASSWORD: ${AUCTIONS_DB_PASSWORD:-diamond-auctions-local}
+      orders_PASSWORD: ${ORDERS_DB_PASSWORD:-diamond-orders-local}
+      notifications_PASSWORD: ${NOTIFICATIONS_DB_PASSWORD:-diamond-notifications-local}
+    volumes:
+      - postgres:/var/lib/postgresql/data
+      - ./infra/postgres.sh:/docker-entrypoint-initdb.d/01-services.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -h 127.0.0.1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  rabbitmq:
+    image: rabbitmq:4.1.4-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-diamond}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-diamond-local-broker}
+    volumes: [rabbitmq:/var/lib/rabbitmq]
+    ports: ["127.0.0.1:15672:15672"]
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  redis:
+    image: redis:7.4.5-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  minio:
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    command: server /data
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-diamond-storage}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-diamond-local-storage}
+    volumes: [minio:/data]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:9000/minio/health/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  mailpit:
+    image: axllent/mailpit:v1.27.9
+    ports: ["127.0.0.1:8025:8025"]
+  zipkin:
+    image: openzipkin/zipkin:3.5.1
+    ports: ["127.0.0.1:9411:9411"]
+  users:
+    <<: *service
+    build:
+      context: .
+      args: {SERVICE: users}
+    environment:
+      <<: *environment
+      DB_PASSWORD: ${USERS_DB_PASSWORD:-diamond-users-local}
+  auctions:
+    <<: *service
+    build:
+      context: .
+      args: {SERVICE: auctions}
+    environment:
+      <<: *environment
+      DB_PASSWORD: ${AUCTIONS_DB_PASSWORD:-diamond-auctions-local}
+      MINIO_URL: http://minio:9000
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-diamond-storage}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-diamond-local-storage}
+    depends_on:
+      postgres: {condition: service_healthy}
+      rabbitmq: {condition: service_healthy}
+      redis: {condition: service_healthy}
+      minio: {condition: service_healthy}
+  orders:
+    <<: *service
+    build:
+      context: .
+      args: {SERVICE: orders}
+    environment:
+      <<: *environment
+      DB_PASSWORD: ${ORDERS_DB_PASSWORD:-diamond-orders-local}
+  notifications:
+    <<: *service
+    build:
+      context: .
+      args: {SERVICE: notifications}
+    environment:
+      <<: *environment
+      DB_PASSWORD: ${NOTIFICATIONS_DB_PASSWORD:-diamond-notifications-local}
+  gateway:
+    <<: *service
+    build:
+      context: .
+      args: {SERVICE: gateway}
+    environment:
+      REDIS_HOST: redis
+      APP_ORIGIN: ${APP_ORIGIN:-http://localhost:8080}
+    depends_on:
+      redis: {condition: service_healthy}
+      users: {condition: service_healthy}
+      auctions: {condition: service_healthy}
+      orders: {condition: service_healthy}
+      notifications: {condition: service_healthy}
+  frontend:
+    build: ./frontend
+    ports: ["127.0.0.1:8080:80"]
+    depends_on:
+      gateway: {condition: service_healthy}
+volumes:
+  postgres:
+  rabbitmq:
+  minio:

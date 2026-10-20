@@ -1,0 +1,10 @@
+work/
+outputs/
+.env
+**/target/
+**/node_modules/
+**/dist/
+**/playwright-report/
+**/test-results/
+.idea/
+*.log

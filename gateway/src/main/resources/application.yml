@@ -1,0 +1,30 @@
+spring:
+  application.name: gateway
+  data.redis.host: ${REDIS_HOST:localhost}
+  cloud.gateway.server.webflux:
+    globalcors:
+      add-to-simple-url-handler-mapping: true
+      cors-configurations:
+        '[/**]':
+          allowedOrigins: ${APP_ORIGIN:http://localhost:8080}
+          allowedMethods: [GET, POST, PUT, DELETE, OPTIONS]
+          allowedHeaders: [Authorization, Content-Type, Idempotency-Key, X-Correlation-Id]
+          allowCredentials: true
+    routes:
+      - id: users
+        uri: http://users:8080
+        predicates: [Path=/api/auth/**,/api/profile]
+      - id: auctions
+        uri: http://auctions:8080
+        predicates: [Path=/api/auctions/**,/api/seller/**,/api/admin/**,/api/buyer/**,/api/images/**]
+      - id: live
+        uri: ws://auctions:8080
+        predicates: [Path=/live/**]
+      - id: orders
+        uri: http://orders:8080
+        predicates: [Path=/api/orders/**]
+      - id: notifications
+        uri: http://notifications:8080
+        predicates: [Path=/api/notifications/**]
+server.shutdown: graceful
+management.endpoint.health.probes.enabled: true

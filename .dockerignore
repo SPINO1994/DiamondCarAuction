@@ -1,0 +1,7 @@
+.git
+work
+outputs
+**/target
+**/node_modules
+**/dist
+.env
