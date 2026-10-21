@@ -47,7 +47,7 @@ public class Security {
             .authorizeHttpRequests(requests -> requests
                 .requestMatchers("/actuator/health/**", "/api/auth/register", "/api/auth/login",
                     "/api/auth/refresh", "/api/auth/logout", "/internal/**", "/live/**").permitAll()
-                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/auctions", "/api/auctions/*", "/api/images/*").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/auctions", "/api/auctions/*", "/api/auctions/*/state", "/api/images/*").permitAll()
                 .anyRequest().authenticated())
             .oauth2ResourceServer(server -> server.jwt(jwt -> jwt.jwtAuthenticationConverter(converter)))
             .build();
