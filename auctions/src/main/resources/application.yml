@@ -51,3 +51,5 @@ diamond:
 spring.servlet.multipart:
   max-file-size: 8MB
   max-request-size: 9MB
+diamond.outbox.enabled: true
+spring.task.scheduling.pool.size: 4
