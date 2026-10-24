@@ -184,3 +184,4 @@ select { appearance: none; padding-right: 26px; background-image: linear-gradien
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
 }
+.review-photo { max-width: 320px; max-height: 220px; object-fit: contain; object-position: left; }

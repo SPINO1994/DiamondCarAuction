@@ -15,6 +15,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.client.RestClient;
 
 @Component
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name="diamond.email.enabled", matchIfMissing=true)
 class EmailDelivery {
     private final Logger log = LoggerFactory.getLogger(EmailDelivery.class);
     private final JdbcClient db;
@@ -23,7 +24,7 @@ class EmailDelivery {
     private final RestClient users;
     private final String origin;
 
-    EmailDelivery(JdbcClient db, JavaMailSender mail, TransactionTemplate transactions, ServiceKey key,
+    EmailDelivery(JdbcClient db, JavaMailSender mail, TransactionTemplate transactions, ServiceKey key, RestClient.Builder http,
                   @Value("${diamond.users-url}") String usersUrl, @Value("${diamond.origin}") String origin) {
         this.db = db;
         this.mail = mail;
@@ -32,7 +33,7 @@ class EmailDelivery {
         var requests = new SimpleClientHttpRequestFactory();
         requests.setConnectTimeout(Duration.ofSeconds(2));
         requests.setReadTimeout(Duration.ofSeconds(3));
-        this.users = RestClient.builder().baseUrl(usersUrl).requestFactory(requests)
+        this.users = http.baseUrl(usersUrl).requestFactory(requests)
             .defaultHeader("X-Service-Key", key.value()).build();
     }
 

@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { api, dateTime, errorText, json, money, setSession, title, type Auction, type Managed, type Notice, type Order, type Profile, type Session } from './api';
-import { Cards, Empty, Loading, Problem, Status, useAuth, useQuery } from './ui';
+import { api, dateTime, errorText, getImage, json, money, setSession, title, updateProfile, type Auction, type Managed, type Notice, type Order, type Profile, type Session } from './api';
+import { Cards, Empty, Loading, Photo, Problem, Status, useAuth, useQuery } from './ui';
 
 export function AuthForm({ register = false }: { register?: boolean }) {
   const navigate = useNavigate();
@@ -19,6 +19,7 @@ export function AuthForm({ register = false }: { register?: boolean }) {
   }
   return <main className="wrap page"><div className="form-shell">
     <p className="eyebrow">DIAMOND CAR AUCTION</p><h1>{register ? 'Create an account' : 'Sign in'}</h1>
+    {location.state?.expired && <Problem message="Your session expired. Sign in again." />}
     <form className="stack" onSubmit={submit}>
       {register && <label>Name<input name="name" autoComplete="name" required maxLength={80} /></label>}
       <label>Email<input name="email" type="email" autoComplete="email" required maxLength={254} /></label>
@@ -42,7 +43,7 @@ export function ProfilePage() {
     event.preventDefault(); setBusy(true); setError(''); setSaved(false);
     try {
       const profile = await api<Profile>('/api/profile', json(Object.fromEntries(new FormData(event.currentTarget)), 'PUT'));
-      setSession({ ...session!, profile });
+      updateProfile(profile);
       setSaved(true);
     } catch (reason) { setError(errorText(reason)); }
     finally { setBusy(false); }
@@ -66,8 +67,10 @@ function Buyer() {
   const orders = useQuery<Order[]>('/api/orders');
   const [tab, setTab] = useState('Active bids');
   useEffect(() => {
-    if (tab !== 'Orders' && tab !== 'Won auctions') return;
-    const timer = setInterval(orders.reload, 7000);
+    const timer = setInterval(() => {
+      if (tab === 'Orders' || tab === 'Won auctions') orders.reload();
+      if (tab === 'Active bids' || tab === 'Won auctions') positions.reload();
+    }, 7000);
     return () => clearInterval(timer);
   }, [tab]);
   const active = positions.data?.filter(position => ['LIVE', 'FINALIZING'].includes(position.auction.status)) ?? [];
@@ -140,12 +143,25 @@ function ReviewEntry({ item, reload }: { item: Managed; reload: () => void }) {
       {auction.status === 'REVIEW' && <><button className="button dark compact" onClick={() => action('review', { decision: 'APPROVE' })} disabled={busy}>Approve</button>
         <button className="button outline compact" onClick={() => setReasonFor('reject')}>Reject</button></>}
       {['LIVE', 'SCHEDULED'].includes(auction.status) && <button className="button outline compact" onClick={() => setReasonFor('cancel')}>Cancel auction</button>}</div>
-    {open && <div className="moderation-preview"><p>{auction.vehicle.description}</p><p>{auction.vehicle.condition}</p><p>{auction.vehicle.serviceHistory}</p>
+    {open && <div className="moderation-preview"><ReviewPhoto image={auction.vehicle.images[0]} /><p>{auction.vehicle.description}</p><p>{auction.vehicle.condition}</p><p>{auction.vehicle.serviceHistory}</p>
       <p>Opening bid {money(auction.startingPrice, auction.currency)} · Reserve {item.reserve ? money(item.reserve, auction.currency) : 'None'}</p></div>}
     {reasonFor && <ReasonForm label={reasonFor === 'reject' ? 'Reject listing' : 'Confirm cancellation'} busy={busy} onSubmit={reason =>
       reasonFor === 'reject' ? action('review', { decision: 'REJECT', reason }) : action('cancel', { reason })} />}
     {error && <Problem message={error} />}
   </li>;
+}
+function ReviewPhoto({ image }: { image?: string }) {
+  const [src, setSrc] = useState<string>();
+  useEffect(() => {
+    if (!image || !image.startsWith('/api/')) return;
+    let url: string | undefined;
+    let mounted = true;
+    getImage(image).then(blob => {
+      if (mounted) { url = URL.createObjectURL(blob); setSrc(url); }
+    }).catch(() => undefined);
+    return () => { mounted = false; if (url) URL.revokeObjectURL(url); };
+  }, [image]);
+  return <Photo className="review-photo" src={image?.startsWith('/api/') ? src : image} alt="Submitted vehicle cover" />;
 }
 function ReasonForm({ label, busy, onSubmit }: { label: string; busy: boolean; onSubmit: (reason: string) => void }) {
   return <form className="reason" onSubmit={event => { event.preventDefault(); onSubmit(String(new FormData(event.currentTarget).get('reason'))); }}>

@@ -49,7 +49,7 @@ class AuctionStore {
             status = !time.isBefore(row.endsAt()) ? "FINALIZING" : time.isBefore(row.startsAt()) ? "SCHEDULED" : "LIVE";
         return new View(row.id(), row.sellerName(), decode(row.vehicle()), row.startingPrice(), row.increment(),
             row.startsAt(), row.endsAt(), status, row.currentPrice(), currency,
-            row.reserve() == null || row.currentPrice().compareTo(row.reserve()) >= 0,
+            row.reserve() == null || (row.leaderId() != null && row.currentPrice().compareTo(row.reserve()) >= 0),
             row.leaderId() != null, row.version(), time);
     }
 

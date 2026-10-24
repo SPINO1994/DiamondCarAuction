@@ -50,14 +50,21 @@ class LiveAuctions extends TextWebSocketHandler {
             UUID id = UUID.fromString(segments[segments.length-1]);
             var state = Bidding.state(store, id);
             var safe = new ConcurrentWebSocketSessionDecorator(session, 3000, 128 * 1024);
-            viewers.computeIfAbsent(id, ignored -> new ConcurrentHashMap<>()).put(session.getId(), new Subscription(safe));
+            viewers.compute(id, (key, existing) -> {
+                var subscriptions = existing == null ? new ConcurrentHashMap<String, Subscription>() : existing;
+                subscriptions.put(session.getId(), new Subscription(safe));
+                return subscriptions;
+            });
             send(safe, state);
         } catch (RuntimeException error) { session.close(CloseStatus.POLICY_VIOLATION); }
     }
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
-        viewers.forEach((id, subscriptions) -> subscriptions.remove(session.getId()));
+        viewers.keySet().forEach(id -> viewers.computeIfPresent(id, (key, subscriptions) -> {
+            subscriptions.remove(session.getId());
+            return subscriptions.isEmpty() ? null : subscriptions;
+        }));
     }
 
     @Override

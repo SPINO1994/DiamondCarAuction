@@ -13,18 +13,22 @@ spring:
     routes:
       - id: users
         uri: http://users:8080
-        predicates: [Path=/api/auth/**,/api/profile]
+        predicates: ["Path=/api/auth/**,/api/profile"]
       - id: auctions
         uri: http://auctions:8080
-        predicates: [Path=/api/auctions/**,/api/seller/**,/api/admin/**,/api/buyer/**,/api/images/**]
+        predicates: ["Path=/api/auctions/**,/api/seller/**,/api/admin/**,/api/buyer/**,/api/images/**"]
       - id: live
         uri: ws://auctions:8080
-        predicates: [Path=/live/**]
+        predicates: ["Path=/live/**"]
       - id: orders
         uri: http://orders:8080
-        predicates: [Path=/api/orders/**]
+        predicates: ["Path=/api/orders/**"]
       - id: notifications
         uri: http://notifications:8080
-        predicates: [Path=/api/notifications/**]
+        predicates: ["Path=/api/notifications/**"]
 server.shutdown: graceful
 management.endpoint.health.probes.enabled: true
+spring.reactor.context-propagation: auto
+management.tracing.sampling.probability: ${TRACE_SAMPLE:1.0}
+management.zipkin.tracing.endpoint: ${ZIPKIN_URL:http://zipkin:9411/api/v2/spans}
+logging.structured.format.console: logstash

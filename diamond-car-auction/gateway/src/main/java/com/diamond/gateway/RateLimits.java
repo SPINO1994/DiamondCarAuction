@@ -24,8 +24,6 @@ class RateLimits implements GlobalFilter, Ordered {
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         var request = exchange.getRequest();
-        String id = request.getHeaders().getFirst("X-Correlation-Id");
-        if (id == null || !id.matches("[a-zA-Z0-9_-]{1,80}")) id = UUID.randomUUID().toString();
         var next = exchange.mutate().request(request.mutate().headers(headers -> headers.set(
             "X-Correlation-Id", idValue(request))).build()).build();
         String path = request.getPath().value();
@@ -33,7 +31,9 @@ class RateLimits implements GlobalFilter, Ordered {
         boolean bid = path.matches("/api/auctions/[^/]+/(bids|max-bid)");
         if (request.getMethod() != HttpMethod.POST || (!auth && !bid)) return chain.filter(next);
         var remote = request.getRemoteAddress();
-        String address = remote == null ? "unknown" : remote.getAddress().getHostAddress();
+        String forwarded = request.getHeaders().getFirst("X-Client-IP");
+        String address = forwarded != null && forwarded.matches("[0-9a-fA-F:.]{2,45}") ? forwarded :
+            remote == null ? "unknown" : remote.getAddress().getHostAddress();
         return redis.execute(COUNT, List.of("limit:" + (auth ? "auth:" : "bid:") + address), List.of())
             .next().onErrorReturn(-1L).flatMap(count -> {
                 if (count >= 0 && count <= (auth ? 25 : 180)) return chain.filter(next);
