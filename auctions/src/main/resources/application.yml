@@ -53,3 +53,5 @@ spring.servlet.multipart:
   max-request-size: 9MB
 diamond.outbox.enabled: true
 spring.task.scheduling.pool.size: 4
+spring.data.redis.timeout: 1s
+spring.data.redis.connect-timeout: 1s

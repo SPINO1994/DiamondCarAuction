@@ -83,6 +83,7 @@ services:
     <<: *service
     build:
       context: .
+      target: ${JAVA_IMAGE_TARGET:-local}
       args: {SERVICE: users}
     environment:
       <<: *environment
@@ -91,6 +92,7 @@ services:
     <<: *service
     build:
       context: .
+      target: ${JAVA_IMAGE_TARGET:-local}
       args: {SERVICE: auctions}
     environment:
       <<: *environment
@@ -107,6 +109,7 @@ services:
     <<: *service
     build:
       context: .
+      target: ${JAVA_IMAGE_TARGET:-local}
       args: {SERVICE: orders}
     environment:
       <<: *environment
@@ -115,6 +118,7 @@ services:
     <<: *service
     build:
       context: .
+      target: ${JAVA_IMAGE_TARGET:-local}
       args: {SERVICE: notifications}
     environment:
       <<: *environment
@@ -123,6 +127,7 @@ services:
     <<: *service
     build:
       context: .
+      target: ${JAVA_IMAGE_TARGET:-local}
       args: {SERVICE: gateway}
     environment:
       REDIS_HOST: redis
@@ -135,7 +140,12 @@ services:
       notifications: {condition: service_healthy}
   frontend:
     build: ./frontend
-    ports: ["127.0.0.1:8080:80"]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+    ports: ["127.0.0.1:${APP_PORT:-8080}:80"]
     depends_on:
       gateway: {condition: service_healthy}
 volumes:

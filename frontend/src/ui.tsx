@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { Link, Navigate, useLocation } from 'react-router-dom';
-import { api, errorText, labels, money, refreshSession, setSession, subscribe, title, type Auction, type Profile, type Session } from './api';
+import { api, errorText, labels, money, refreshSession, sessionExpired, setSession, subscribe, title, type Auction, type Profile, type Session } from './api';
 
 const Auth = createContext<{ session: Session | null; loading: boolean }>({ session: null, loading: true });
 export const useAuth = () => useContext(Auth);
@@ -20,7 +20,7 @@ export function Require({ role, children }: { role?: Profile['role']; children: 
   const { session, loading } = useAuth();
   const location = useLocation();
   if (loading) return <main className="wrap page"><Loading /></main>;
-  if (!session) return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+  if (!session) return <Navigate to="/login" state={{ from: location.pathname, expired: sessionExpired() }} replace />;
   if (role && session.profile.role !== role) return <main className="wrap page"><Problem message="This page is unavailable to your account." /></main>;
   return children;
 }

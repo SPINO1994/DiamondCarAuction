@@ -17,6 +17,8 @@ export type Order = { id: string; auctionId: string; title: string; amount: numb
 export type Notice = { id: string; title: string; body: string; link: string; createdAt: string; readAt: string | null };
 
 let session: Session | null = null;
+let expired = false;
+export const sessionExpired = () => expired;
 let refreshing: Promise<Session | null> | null = null;
 const listeners = new Set<(value: Session | null) => void>();
 
@@ -25,14 +27,19 @@ export function subscribe(listener: (value: Session | null) => void) {
   return () => { listeners.delete(listener); };
 }
 export function setSession(value: Session | null) {
+  if (value) expired = false;
   session = value;
   listeners.forEach(listener => listener(value));
+}
+export function updateProfile(profile: Profile) {
+  if (session) setSession({ ...session, profile });
 }
 export function refreshSession() {
   if (!refreshing) {
     const refresh = async () => {
       const result = await fetch('/api/auth/refresh', { method: 'POST' });
       const value = result.ok ? await result.json() as Session : null;
+      if (!value && session) expired = true;
       setSession(value);
       return value;
     };

@@ -25,7 +25,7 @@ class Closing {
         this.transactions = transactions;
     }
 
-    @Scheduled(fixedDelay=700)
+    @Scheduled(fixedDelayString="${diamond.closure.delay:700}", initialDelayString="${diamond.closure.delay:700}")
     void finishDue() {
         for (int i = 0; i < 30; i++) {
             if (!Boolean.TRUE.equals(transactions.execute(status -> closeNext()))) return;

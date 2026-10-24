@@ -2,10 +2,16 @@ FROM maven:3.9.11-eclipse-temurin-21 AS build
 WORKDIR /src
 ARG SERVICE
 COPY . .
-RUN --mount=type=cache,target=/root/.m2,sharing=locked mvn -B -pl "$SERVICE" -am package -DskipTests && cp "$SERVICE"/target/"$SERVICE"-1.0.0.jar /service.jar
-FROM eclipse-temurin:21.0.9_10-jre-jammy
+RUN --mount=type=cache,target=/root/.m2,sharing=locked mvn -B -ntp -pl "$SERVICE" -am package -Dmaven.test.skip=true && cp "$SERVICE"/target/"$SERVICE"-1.0.0.jar /service.jar
+FROM eclipse-temurin:21.0.9_10-jre-jammy AS runtime
 RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
 RUN groupadd -r diamond && useradd -r -g diamond diamond
 USER diamond
-COPY --from=build /service.jar /service.jar
 ENTRYPOINT ["java","-jar","/service.jar"]
+
+FROM runtime AS prebuilt
+ARG SERVICE
+COPY ci-jars/${SERVICE}-1.0.0.jar /service.jar
+
+FROM runtime AS local
+COPY --from=build /service.jar /service.jar

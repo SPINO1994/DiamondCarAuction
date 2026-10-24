@@ -117,8 +117,8 @@ function ListingForm({ item }: { item?: Managed }) {
       <label>Opening bid<input name="startingPrice" type="number" step=".01" min=".01" defaultValue={auction?.startingPrice} required /></label>
       <label>Minimum increment<input name="increment" type="number" step=".01" min=".01" defaultValue={auction?.increment ?? 250} required /></label>
       <label>Private reserve (optional)<input name="reserve" type="number" step=".01" min=".01" defaultValue={item?.reserve ?? ''} /></label>
-      <label>Starts (local time)<input name="startsAt" type="datetime-local" defaultValue={auction && local(auction.startsAt)} required /></label>
-      <label>Ends (local time)<input name="endsAt" type="datetime-local" defaultValue={auction && local(auction.endsAt)} required /></label>
+      <label>Starts (local time)<input name="startsAt" type="datetime-local" step="1" defaultValue={auction && local(auction.startsAt)} required /></label>
+      <label>Ends (local time)<input name="endsAt" type="datetime-local" step="1" defaultValue={auction && local(auction.endsAt)} required /></label>
     </div></section>
     {preview && <section className="paper preview"><Photo src={photo(vehicle.images[0] ?? '')} alt="Listing cover preview" /><div><h2>{title(vehicle)}</h2><p>{vehicle.location}</p><p>{vehicle.description}</p></div></section>}
     {problem && <Problem message={problem} />}
